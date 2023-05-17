@@ -1,0 +1,231 @@
+
+import time
+
+#to find later the time of execution 
+strat=time.time()
+print(strat)
+
+#the questions uesd in the questionar 
+questions = ["What is the weather today?",
+             "What is the rainfall today?",
+             "What is the Temperature today?",
+             "Descripe the sky?"
+            ]
+
+#the answers to each question in order 
+answers = [["1.Today is rain", "2.Today is dry"],
+           ["1.Rainfall is low", "2.Rainfall is high"],
+           ["1.Temperature is cold", "2.Temperature is warm"],
+           ["1.The Sky is overcast", "2.Sky is clear"]
+          ]
+
+#uesd to save the data come from the questionea in the next cell
+questionnaire_results = {}
+
+#ask uesr the question and save thier answers and the evaluation to ues next in expert system 
+for i in range(len(questions)):
+   
+    print(questions[i])
+    for answer in answers[i]:
+        print(answer)
+        
+    
+    response = input("Enter your answer (1 or 2): ")
+    while response not in ["1", "2"]:
+        print("Invalid input. Please enter 1 or 2.")
+        response = input("Enter your answer (1 or 2): ")
+    
+    evaluation = input("Enter a number to evaluate your answer (between -1 and 1) : ")
+    while not (-1 <= float(evaluation) <= 1):
+        print("Invalid input. Please enter a float number between -1 and 1.")
+        evaluation = input("Enter a number to evaluate your answer (between -1 and 1): ")
+
+    response_dict = {"answer": answers[i][int(response) - 1], "evaluation": evaluation}
+    
+    questionnaire_results[questions[i]] = response_dict
+    print ("\n" )
+    print ("*****************************")
+    
+print("Thank you for completing the questionnaire!")
+
+#this is optitinal but i but it i print them To make sure if the user forgets the data he entered
+print("Your responses are:")
+for question, response in questionnaire_results.items():
+    print("\n")
+    print(question + " " + response["answer"] + ", evaluation: " + response["evaluation"])
+
+    
+# analysis the result from the questionar to be suitable to use from the system 
+answer_evaluations = {}
+
+
+for response in questionnaire_results.values():
+    #The slicing operation effectively removes the first two characters from the original string.
+    #to ues it as key (object)
+    answer_text = response['answer'][2:]
+    #to use it as CF
+    evaluation = response['evaluation']
+    #for the new dictionary the keys are the answer_text and the values are evaluation
+    answer_evaluations[answer_text] = evaluation
+    
+answer_evaluations
+
+#i want to convert the type of values in the dict from strings to numbers
+answer_evaluations = {k: float(v) for k, v in answer_evaluations.items()}
+
+#i define a new variabe of type dict as a copy of answer_evaluations
+#important note i use the constructer dict() to make the facts refrence to new memory location 
+#not the memory location of answer_evaluations 
+facts=dict(answer_evaluations)
+
+#here the facts is ready to pass it to the Run_Expert function 
+facts
+
+#becaus always i must add new information to fact 
+num_items1 = len(facts)
+
+#function if result in the results how to deal with according to its sign 
+def math_operation(num1, num2):
+    if num1 > 0 and num2 > 0:
+        return num1 + num2 *(1- num1)
+    
+    elif num1 < 0 and num2 < 0:
+        return num1 + num2 *(1 + num1)
+    
+    else:
+        return (num1 + num2) / (1-min(abs(num1),abs(num2)))
+
+# Define the rules  (constants) 
+#[list] denote and  if many object in the list all must be to run the rule  
+#{set} denote or    if many object in the set any one or more must be to run the rule
+
+rules = {'Rule 1': {'If': 'Today is rain', 'Then': 'Tomorw is rain', 'CF': 0.5},
+         
+         'Rule 2': {'If': 'Today is dry', 'Then': 'Tomorw is dry', 'CF': 0.5},
+         
+         'Rule 3': {'If': ['Today is rain','Rainfall is low'] ,'Then': 'Tomorw is dry', 'CF': 0.6},
+         
+         'Rule 4': {'If': ['Today is rain','Rainfall is low','Temperature is cold'] ,
+                    'Then': 'Tomorw is dry', 'CF': 0.7},
+         
+         
+         'Rule 5': {'If': ['Today is dry','Temperature is warm'] ,'Then': 'Tomorw is rain', 'CF': 0.65},
+         
+         'Rule 6': {'If': ['Today is dry','Temperature is warm','Sky is overcast'] ,
+                    'Then': 'Tomorw is rain', 'CF': 0.55},
+         
+         
+         'Rule 7': {'If': ['Today is rain','Tomorw is rain','Rainfall is high','Temperature is cold',
+                           'Sky is overcast'] , 'Then': 'Weather is cold', 'CF': 0.9},
+         
+        
+         'Rule 8': {'If': ['Today is dry','Tomorw is dry','Rainfall is low','Temperature is warm',
+                           'Sky is clear'] , 'Then': 'Weather is hot', 'CF': 0.9} ,
+         
+        
+         'Rule 9': {'If': {'Today is dry','Rainfall is low','Temperature is warm'} ,
+                    'Then': 'Weather is nice', 'CF': 0.7} ,
+         
+         
+         'Rule 10': {'If':{'Today is rain','Rainfall is high','Temperature is cold'} ,
+                     'Then':'Weather is hot'  ,'CF':-0.4 }                  
+       
+        }
+
+# Define a function to be the expert only according to the Rules avilable 
+def Run_Expert(rules, facts):
+    results = {}
+    results=dict(facts)
+    for rule in rules:
+        #print here is optinal i add it to track/de
+        print (results)
+        
+        if isinstance(rules[rule]['If'], list):
+            if all(fact in facts for fact in rules[rule]['If']):
+            #if set(rules[rule]['If']).issubset(facts.keys()):
+                cf = min(facts[fact] for fact in rules[rule]['If'])
+                #for anding we ues min CF  
+            else:
+                continue
+        
+        
+        elif isinstance(rules[rule]['If'], set):
+            common_facts = set(rules[rule]['If']).intersection(facts)
+            if common_facts:
+                
+                cf = max(facts[fact] for fact in common_facts)
+                 # for or we ues max CF
+            else:
+                continue       
+            
+        else:
+            if rules[rule]['If'] in facts:
+                cf = facts[rules[rule]['If']]
+            else:
+                continue
+                
+        result = rules[rule]['Then'] 
+        cf *= rules[rule]['CF'] 
+        
+
+        
+        if result in results:
+            results[result]=math_operation(results[result] ,cf)
+            
+        else:
+            results[result] = cf  
+           
+    return results
+
+
+
+# Run the expert system
+while True:
+    results = Run_Expert(rules, facts)
+    
+    
+    
+    if not results:
+        break
+    
+     #only the fact with the maximum CF add the facts  
+    expert_result = max(results, key=results.get)  
+    
+    if expert_result in facts and float(facts[expert_result]) >= results[expert_result]:
+        break
+    if expert_result not in facts:
+        facts[expert_result] = results[expert_result]
+   
+    facts[expert_result] = results[expert_result]
+    
+#all expections 
+results
+
+num_items2 = len(facts)
+
+# if the fact length not affected when run the expert 
+#i want to add the resutt with max CF not in facts befour 
+if (num_items2 ==num_items2 ):
+    facts_items = set(facts.items())
+    for key, value in list(results.items()):
+        if (key, value) in facts_items:
+            del results[key]
+    expert_result = max(results, key=results.get)            
+    facts[expert_result] = results[expert_result]  
+    
+# the fact from the user + one new fact the expert find it (have the max CF) 
+facts
+
+#the end time of execution 
+end=time.time()
+print(end)
+
+#the time from start to end of program 
+full=end-strat
+print(full/60)  #time in min the program take to find the answer 
+
+#when i fineshed my calculations i will re-run this cell to comper the outputs 
+me=time.time()
+print((me-strat)/60)
+
+
